@@ -1,20 +1,32 @@
 #!/usr/bin/env python3
 from optimal_control_framework.mpc_solvers import Ddp
-from obstacle_with_buffer import BufferedSphericalObstacle
 from linearized_ellipsoid_propagation import propagateEllipsoid
 import numpy as np
 
 class RobustDdp(Ddp):
-    def __init__(self, *args, **kwargs):
-        super(RobustDdp, self).__init__(*args, **kwargs)
-        n = self.dynamics.n
-        self.Sigma = np.empty((self.N+1, n, n))
-        self.Sigma[0] = np.zeros((self.dynamics.n, self.dynamics.n))
-        self.Sigmaw = 0
-
-    def setCovariance(self, Sigma0, Sigmaw):
+    def __init__(self, dynamics, cost, us0, x0, dt, max_step, Sigma0=0,
+                 Sigmaw=0):
+        self.Sigmaw =Sigmaw
+        self.Sigma = np.empty((cost.N+1, dynamics.n, dynamics.n))
         self.Sigma[0] = Sigma0
-        self.Sigmaw = Sigmaw
+        super(RobustDdp, self).__init__(dynamics, cost, us0, x0, dt, max_step)
+
+    def update_dynamics(self, us, xs):
+        self.V = 0
+        K = np.zeros((self.dynamics.m, self.dynamics.n))
+        for i, u in enumerate(us):
+            x = xs[i]
+            self.V = self.V + self.cost.stagewise_cost(i, x, u,
+                                                       False, self.Sigma[i])
+            xdot = self.dynamics.xdot(i, x, u, self.w)
+            xs[i+1] = x + self.dt*xdot  # For now euler integration
+            # TODO Change instead of dynamics take in an integrator that
+            # integrates continuous dynamics using a fancy integrator maybe
+            jac = self.getDiscreteJacobians(i, x, u)
+            Sigma = propagateEllipsoid(self.Sigma[i], self.Sigmaw, jac, K)
+            self.Sigma[i+1] = Sigma
+        self.V = self.V + self.cost.terminal_cost(xs[-1], False,
+                                                  Sigma)
 
     def getDiscreteJacobians(self, k, x, u):
         A, B, G = self.dynamics.jacobian(k, x, u, self.w)
