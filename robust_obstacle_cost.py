@@ -23,7 +23,10 @@ class RobustSphericalObstacle(SphericalObstacle):
         error_map = np.dot(error_scaling_mat, error)
         distance, jac = super(RobustSphericalObstacle, self).distance_substep(
             error_map, compute_grads)
-        if compute_grads and distance < - self.tol:
-            error_map_x = np.dot(z_x.T, error_scaling_mat.T)
-            jac = np.dot(error_map_x, jac)
+        if compute_grads:
+            if distance < - self.tol:
+                error_map_x = np.dot(z_x.T, error_scaling_mat.T)
+                jac = np.dot(error_map_x, jac)
+            else:
+                jac = np.zeros_like(x)
         return distance, jac
