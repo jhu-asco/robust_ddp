@@ -20,16 +20,16 @@ dynamics = LinearDynamics([A, B])
 Sigma0 = np.diag([0.2, 0.2])
 Sigma_w = 0*np.eye(n)
 # Trajectory info
-dt = 0.01
-N = 100
+dt = 0.05
+N = 40
 #Q = np.zeros(dynamics.n)
 #Q[1] = 0*dt  # For velocity along the trajectory
 R = 0.01*dt*np.eye(dynamics.m)
-Qf = 800*np.eye(dynamics.n)
+Qf = 50*np.eye(dynamics.n)
 Q = Qf*dt*0.1
 ts = np.arange(N+1)*dt
-xd = np.array([2, 2])
-cost = RobustLQRObstacleCost(N, Q, R, Qf, xd, kSigma=5*dt)
+xd = np.array([1, 0])
+cost = RobustLQRObstacleCost(N, Q, R, Qf, xd, kSigma=0*dt)
 max_step = 50.0  # Allowed step for control
 
 x0 = np.array([0, 0])

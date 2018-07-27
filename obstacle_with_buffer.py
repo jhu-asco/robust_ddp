@@ -12,29 +12,27 @@ class BufferedSphericalObstacle(SphericalObstacle):
 
     @classmethod
     def set_buffer_ellipsoid(self, Sigma):
-        radii, principal_axes = np.linalg.eigh(Sigma)
-        L = principal_axes.T*radii
+        radii, R = np.linalg.eigh(Sigma)
+        L = R*radii
         if self.n is None:
             self.n = radii.size
         U,Sigma,V = np.linalg.svd(L[:self.n, :])
-        self.buffer_ellipsoid = (U, Sigma)
+        self.buffer_ellipsoid = (U.T, Sigma)
 
     def distance(self, x, compute_grads=False):
         if self.buffer_ellipsoid is None:
             BufferedSphericalObstacle.buffer_ellipsoid = (1, 0)
         principal_axes, semi_major_axes = self.buffer_ellipsoid
         scale = semi_major_axes + self.radius
-        z = self.mapState(x)
-        error = z - self.center
+        ebar, ebar_x_T = self.findError(x)
         error_scaling_mat = self.radius*(principal_axes/scale[:, np.newaxis])
-        error_map = np.dot(error_scaling_mat, error)
+        error_map = np.dot(error_scaling_mat, ebar)
         distance, jac = super(
             BufferedSphericalObstacle, self).distance_substep(
                 error_map, compute_grads)
         if compute_grads:
             if distance < - self.tol:
-                z_x = self.mapStateJacobian(x)
-                error_map_x = np.dot(z_x.T, error_scaling_mat.T)
+                error_map_x = np.dot(ebar_x_T, error_scaling_mat.T)
                 jac = np.dot(error_map_x, jac)
             else:
                 jac = np.zeros_like(x)
