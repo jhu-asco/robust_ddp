@@ -9,9 +9,12 @@ from ellipsoid_package.ellipsoid_helper import findEllipsoid
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Circle as CirclePatch
+import seaborn as sns
 
-
+sns.set_style('whitegrid')
+sns.set(font_scale=1.2)
 np.set_printoptions(precision=3, suppress=True)
+
 dynamics = UnicycleDynamics()
 # Trajectory info
 dt = 0.1
@@ -24,20 +27,19 @@ ts = np.arange(N+1)*dt
 # Obstacles
 ko = 1000  # Obstacle gain
 obs1 = BufferedSphericalObstacle(np.array([3, 2]), 1)
-obs2 = BufferedSphericalObstacle(np.array([6, 6]), 1)
-obs3 = BufferedSphericalObstacle(np.array([4, 4]), 0)
-obs_list = [obs1, obs2, obs3]
+obs2 = BufferedSphericalObstacle(np.array([6, 5]), 1)
+obs_list = [obs1, obs2]
 #obs_list = [obs1, obs2]
 #obs_list = [obs1]
 #obs_list = []
 # Covariance:
-Sigma0 = np.diag([0.1, 0.1, 0.01])
-Sigma_w = 0.1*np.eye(3)
+Sigma0 = np.diag([0.2, 0.2, 0.02])
+Sigma_w = np.diag([0.01, 0.01, 0.001])
 # Desired terminal condition
 xd = np.array([8.0, 8.0, 0.0])
 cost = RobustLQRObstacleCost(N, Q, R, Qf, xd, ko=ko, obstacles=obs_list,
                              kSigma = 1)
-max_step = 5.0  # Allowed step for control
+max_step = 1  # Allowed step for control
 
 x0 = np.array([0, 0, 0])
 us0 = np.zeros([N, dynamics.m])
@@ -68,6 +70,9 @@ for obs in obs_list:
 for i, Sigma_i in enumerate(ddp.Sigma):
   ellipse = findEllipsoid(ddp.xs[i], Sigma_i)
   plotEllipse(3, ellipse, ax)
+ax.set_xlim(left=-Sigma0[0,0])
+ax.set_ylim(bottom=-Sigma0[1,1])
+plt.savefig('./results/unicycle/unicycle_trajectory.eps', bbox_inches='tight')
 plt.figure(2)
 plt.subplot(2,1,1)
 plt.plot(ts[:-1], ddp.us[:, 0])
@@ -75,8 +80,10 @@ plt.ylabel('Velocity (m/s)')
 plt.subplot(2,1,2)
 plt.plot(ts[:-1], ddp.us[:, 1])
 plt.ylabel('Angular rate (rad/s)')
+plt.savefig('./results/unicycle/unicycle_controls.eps', bbox_inches='tight')
 plt.figure(3)
 plt.plot(ts, ddp.xs[:,2])
 plt.xlabel('Time (seconds)')
 plt.ylabel('Angle (radians)')
+plt.savefig('./results/unicycle/unicycle_residual_states.eps', bbox_inches='tight')
 plt.show()

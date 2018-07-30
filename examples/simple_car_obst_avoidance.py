@@ -6,12 +6,15 @@ from robust_ddp.robust_lqr_obstacle_cost import RobustLQRObstacleCost
 from robust_ddp.obstacle_with_buffer import BufferedSphericalObstacle
 from ellipsoid_package.ellipsoid_projection import plotEllipse
 from ellipsoid_package.ellipsoid_helper import findEllipsoid
+from matplotlib.patches import Circle as CirclePatch
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import Circle as CirclePatch
+import seaborn as sns
 
-
+sns.set_style('whitegrid')
+sns.set(font_scale=1.2)
 np.set_printoptions(precision=3, suppress=True)
+
 dynamics = SimpleCarDynamics()
 # Trajectory info
 dt = 0.1
@@ -25,18 +28,18 @@ ts = np.arange(N+1)*dt
 # Obstacles
 ko = 100  # Obstacle gain
 obs1 = BufferedSphericalObstacle(np.array([3, 2]), 1)
-obs2 = BufferedSphericalObstacle(np.array([6, 6]), 1)
+obs2 = BufferedSphericalObstacle(np.array([6, 5]), 1)
 obs_list = [obs1, obs2]
 #obs_list = []
 # Covariance:
 # x, y, theta, v, phi
-Sigma0 = np.diag([0.1, 0.1, 0.01, 0.01, 0.001])
-Sigma_w = 200*np.diag([0.01, 0.01, 0.001, 0.1, 0.001])  # Multiplied by dt
+Sigma0 = np.diag([0.8, 0.8, 0.02, 0.5, 0.1])
+Sigma_w = 1*np.diag([0.01, 0.01, 0.001, 0.1, 0.001])  # Multiplied by dt
 # Desired terminal condition
 xd = np.array([8.0, 8.0, 0.0, 0.0, 0.0])
 cost = RobustLQRObstacleCost(N, Q, R, Qf, xd, ko=ko, obstacles=obs_list,
                              kSigma = 1)
-max_step = 0.5  # Allowed step for control
+max_step = 0.2  # Allowed step for control
 
 # x,y,theta, v, phi
 x0 = np.array([0, 0, 0, 0, 0])
@@ -74,6 +77,9 @@ for obs in obs_list:
 for i, Sigma_i in enumerate(ddp.Sigma):
   ellipse = findEllipsoid(ddp.xs[i], Sigma_i)
   plotEllipse(5, ellipse, ax)
+ax.set_xlim(left=-Sigma0[0,0])
+ax.set_ylim(bottom=-Sigma0[1,1])
+plt.savefig('./results/simple_car/simple_car_trajectory.eps', bbox_inches='tight')
 plt.figure(2)
 plt.subplot(2,1,1)
 plt.plot(ts[:-1], ddp.us[:, 0])
@@ -81,6 +87,7 @@ plt.ylabel('Acceleration (m/ss)')
 plt.subplot(2,1,2)
 plt.plot(ts[:-1], ddp.us[:, 1])
 plt.ylabel('Steering rate (rad/s)')
+plt.savefig('./results/simple_car/simple_car_controls.eps', bbox_inches='tight')
 plt.figure(3)
 plt.subplot(3,1,1)
 plt.plot(ts, ddp.xs[:, 2])
@@ -91,4 +98,5 @@ plt.ylabel('Velocity (m/s)')
 plt.subplot(3,1,3)
 plt.plot(ts, ddp.xs[:, 4])
 plt.ylabel('Steering angle (rad)')
+plt.savefig('./results/simple_car/simple_car_residual_states.eps', bbox_inches='tight')
 plt.show()
