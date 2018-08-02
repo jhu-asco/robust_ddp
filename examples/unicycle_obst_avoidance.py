@@ -33,17 +33,17 @@ obs_list = [obs1, obs2]
 #obs_list = [obs1]
 #obs_list = []
 # Covariance:
-Sigma0 = np.diag([0.2, 0.2, 0.02])
+Sigma0 = np.diag([0.5, 0.5, 0.02])
 Sigma_w = np.diag([0.01, 0.01, 0.001])
 # Desired terminal condition
 xd = np.array([8.0, 8.0, 0.0])
+ud = np.array([5.0, 0.0])
 cost = RobustLQRObstacleCost(N, Q, R, Qf, xd, ko=ko, obstacles=obs_list,
-                             kSigma = 1)
+                             kSigma = 1, ud=ud)
 max_step = 1  # Allowed step for control
 
 x0 = np.array([0, 0, 0])
-us0 = np.zeros([N, dynamics.m])
-us0[:, 0] = 5
+us0 = np.tile(ud, (N, 1))
 ddp = RobustDdp(dynamics, cost, us0, x0, dt, max_step, Sigma0, Sigma_w,
                 use_prev_x=False)
 V = ddp.V

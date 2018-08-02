@@ -4,9 +4,9 @@ import numpy as np
 
 class RobustLQRObstacleCost(LQRObstacleCost):
     def __init__(self, N, Q, R, Qf, xd=None, obstacles=[], ko = 1,
-                 obstacle_class=BufferedSphericalObstacle, kSigma=1):
+                 obstacle_class=BufferedSphericalObstacle, kSigma=1, ud=None):
         super(RobustLQRObstacleCost, self).__init__(
-            N, Q, R, Qf, xd, obstacles, ko)
+            N, Q, R, Qf, xd, obstacles, ko, ud)
         self.obstacle_class = obstacle_class
         self.kSigma = kSigma
 
