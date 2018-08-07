@@ -10,6 +10,7 @@ from matplotlib.patches import Circle as CirclePatch
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+import os
 
 sns.set_style('whitegrid')
 sns.set(font_scale=1.2)
@@ -50,8 +51,7 @@ distance = 10
 #a_intercept = 6*distance/(ts[-2]**2)
 #a_slope = -a_intercept*(2/ts[-2])
 #us0[:, 0] = a_slope*ts[:-1] + a_intercept
-ddp = RobustDdp(dynamics, cost, us0, x0, dt, max_step, Sigma0, Sigma_w,
-                use_prev_x=False)
+ddp = RobustDdp(dynamics, cost, us0, x0, dt, max_step, Sigma0, Sigma_w)
 V = ddp.V
 for i in range(100):
     ddp.iterate()
@@ -79,6 +79,10 @@ for i, Sigma_i in enumerate(ddp.Sigma):
   plotEllipse(5, ellipse, ax)
 ax.set_xlim(left=-Sigma0[0,0])
 ax.set_ylim(bottom=-Sigma0[1,1])
+try:
+    os.makedirs('./results/simple_car')
+except:
+    pass
 plt.savefig('./results/simple_car/simple_car_trajectory.eps', bbox_inches='tight')
 plt.figure(2)
 plt.subplot(2,1,1)

@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Circle as CirclePatch
 import seaborn as sns
+import os
 
 sns.set_style('whitegrid')
 sns.set(font_scale=1.2)
@@ -44,8 +45,7 @@ max_step = 1  # Allowed step for control
 
 x0 = np.array([0, 0, 0])
 us0 = np.tile(ud, (N, 1))
-ddp = RobustDdp(dynamics, cost, us0, x0, dt, max_step, Sigma0, Sigma_w,
-                use_prev_x=False)
+ddp = RobustDdp(dynamics, cost, us0, x0, dt, max_step, Sigma0, Sigma_w)
 V = ddp.V
 for i in range(20):
     ddp.iterate()
@@ -72,6 +72,10 @@ for i, Sigma_i in enumerate(ddp.Sigma):
   plotEllipse(3, ellipse, ax)
 ax.set_xlim(left=-Sigma0[0,0])
 ax.set_ylim(bottom=-Sigma0[1,1])
+try:
+    os.makedires('./results/unicycle')
+except:
+    pass
 plt.savefig('./results/unicycle/unicycle_trajectory.eps', bbox_inches='tight')
 plt.figure(2)
 plt.subplot(2,1,1)
