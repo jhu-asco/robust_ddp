@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from optimal_control_framework.dynamics import UnicycleDynamics
+from optimal_control_framework.dynamics import CasadiUnicycleDynamics
+from optimal_control_framework.integrators import EulerIntegrator
 from robust_ddp.robust_ddp import RobustDdp
 from robust_ddp.robust_lqr_obstacle_cost import RobustLQRObstacleCost
 from robust_ddp.obstacle_with_buffer import BufferedSphericalObstacle
@@ -12,48 +13,52 @@ from matplotlib.patches import Circle as CirclePatch
 import seaborn as sns
 import os
 
+np.random.seed(1000)
 sns.set_style('whitegrid')
-sns.set(font_scale=1.2)
+sns.set(font_scale=1.0)
 np.set_printoptions(precision=3, suppress=True)
 
-dynamics = UnicycleDynamics()
+dynamics = CasadiUnicycleDynamics()
+integrator = EulerIntegrator(dynamics)
 # Trajectory info
 dt = 0.1
 N = 20
 Q = dt*np.zeros(dynamics.n)
-R = 1*dt*np.eye(dynamics.m)
+R = 5*dt*np.eye(dynamics.m)
 Qf = 30*np.eye(dynamics.n)
 Qf[-1, -1] = 0
 ts = np.arange(N+1)*dt
 # Obstacles
-ko = 1000  # Obstacle gain
+kSigma = 1
+max_iters = 40
+max_ko = 10000
+ko_gain = 2.0/(0.8*max_iters)
+sigma_inflation = 3
 obs1 = BufferedSphericalObstacle(np.array([3, 2]), 1)
 obs2 = BufferedSphericalObstacle(np.array([6, 5]), 1)
 obs_list = [obs1, obs2]
-#obs_list = [obs1, obs2]
-#obs_list = [obs1]
-#obs_list = []
 # Covariance:
-Sigma0 = np.diag([0.5, 0.5, 0.02])
-Sigma_w = np.diag([0.01, 0.01, 0.001])
+Sigma0 = np.diag([0.05, 0.05, 0.0])
+Sigma_w = 2*np.diag([0.01, 0.01, 0.01])
 # Desired terminal condition
 xd = np.array([8.0, 8.0, 0.0])
 ud = np.array([5.0, 0.0])
-cost = RobustLQRObstacleCost(N, Q, R, Qf, xd, ko=ko, obstacles=obs_list,
+cost = RobustLQRObstacleCost(N, Q, R, Qf, xd, ko=0, obstacles=obs_list,
                              kSigma = 1, ud=ud)
 max_step = 1  # Allowed step for control
 
 x0 = np.array([0, 0, 0])
 us0 = np.tile(ud, (N, 1))
+BufferedSphericalObstacle.sigma_inflation = sigma_inflation
 ddp = RobustDdp(dynamics, cost, us0, x0, dt, max_step, Sigma0, Sigma_w)
 V = ddp.V
-for i in range(20):
+for i in range(max_iters):
+    cost.ko = np.tanh(i*ko_gain)*max_ko
+    ddp.update_dynamics(ddp.us, ddp.xs)
     ddp.iterate()
     V = ddp.V
     print("V: ", V)
     print("xn: ", ddp.xs[-1])
-    if not ddp.status:
-        break
 f = plt.figure(1)
 #plt.clf()
 ax = f.add_subplot(111)
@@ -68,10 +73,10 @@ for obs in obs_list:
   ax.add_patch(circ_patch)
   ax.plot(obs.center[0], obs.center[1], 'r*')
 for i, Sigma_i in enumerate(ddp.Sigma):
-  ellipse = findEllipsoid(ddp.xs[i], Sigma_i)
+  ellipse = findEllipsoid(ddp.xs[i], sigma_inflation*Sigma_i)
   plotEllipse(3, ellipse, ax)
-ax.set_xlim(left=-Sigma0[0,0])
-ax.set_ylim(bottom=-Sigma0[1,1])
+ax.set_xlim(left=-sigma_inflation*Sigma0[0,0])
+ax.set_ylim(bottom=-sigma_inflation*Sigma0[1,1])
 try:
     os.makedires('./results/unicycle')
 except:

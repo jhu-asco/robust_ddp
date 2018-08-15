@@ -1,30 +1,27 @@
 #!/usr/bin/env python3
 from optimal_control_framework.mpc_solvers import Ddp
-from optimal_control_framework.costs import SphericalObstacle
 from linearized_ellipsoid_propagation import propagateEllipsoid
 import numpy as np
 
 class RobustDdp(Ddp):
     def __init__(self, dynamics, cost, us0, x0, dt, max_step, Sigma0=0,
-                 Sigmaw=0, integrator=None):
+                 Sigmaw=0, integrator=None, Ks=None):
         self.Sigmaw =Sigmaw
         self.Sigma = np.empty((cost.N+1, dynamics.n, dynamics.n))
         self.Sigma[0] = Sigma0
         super(RobustDdp, self).__init__(dynamics, cost, us0, x0, dt, max_step,
-                                        integrator=None)
+                                        integrator, Ks)
 
     def update_dynamics(self, us, xs):
         self.V = 0
-        K = np.zeros((self.dynamics.m, self.dynamics.n))
         for i, u in enumerate(us):
+            K_k = self.Ks[i]
             x = xs[i]
             self.V = self.V + self.cost.stagewise_cost(i, x, u,
                                                        False, self.Sigma[i])
             xs[i + 1] = self.integrator.step(i, self.dt, x, u, self.w)
-            # TODO Change instead of dynamics take in an integrator that
-            # integrates continuous dynamics using a fancy integrator maybe
             jac = self.integrator.jacobian(i, self.dt, x, u, self.w)
-            Sigma = propagateEllipsoid(self.Sigma[i], self.Sigmaw, jac, K)
+            Sigma = propagateEllipsoid(self.Sigma[i], self.Sigmaw, jac, K_k[:, :-1])
             self.Sigma[i+1] = Sigma
         self.V = self.V + self.cost.terminal_cost(xs[-1], False,
                                                   Sigma)

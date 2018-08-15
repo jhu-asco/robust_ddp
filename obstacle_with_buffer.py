@@ -5,6 +5,7 @@ import numpy as np
 
 class BufferedSphericalObstacle(SphericalObstacle):
     buffer_ellipsoid = None  # Principal axes (R.T), semi_major_axes
+    sigma_inflation = 1  # Inflate ellipsoids
     n = None
     def __init__(self, center, radius):
         super(BufferedSphericalObstacle, self).__init__(center, radius)
@@ -20,13 +21,15 @@ class BufferedSphericalObstacle(SphericalObstacle):
         self.buffer_ellipsoid = (U.T, Sigma)
 
     def distance(self, x, compute_grads=False):
-        if self.buffer_ellipsoid is None:
-            BufferedSphericalObstacle.buffer_ellipsoid = (1, 0)
-        principal_axes, semi_major_axes = self.buffer_ellipsoid
-        scale = semi_major_axes + self.radius
         ebar, ebar_x_T = self.findError(x)
-        error_scaling_mat = self.radius*(principal_axes/scale[:, np.newaxis])
-        error_map = np.dot(error_scaling_mat, ebar)
+        if self.buffer_ellipsoid is None:
+            error_map = ebar
+            error_scaling_mat = np.eye(ebar_x_T.shape[1])
+        else:
+            principal_axes, semi_major_axes = self.buffer_ellipsoid
+            scale = self.sigma_inflation*semi_major_axes + self.radius
+            error_scaling_mat = self.radius*(principal_axes/scale[:, np.newaxis])
+            error_map = np.dot(error_scaling_mat, ebar)
         distance, jac = super(
             BufferedSphericalObstacle, self).distance_substep(
                 error_map, compute_grads)
